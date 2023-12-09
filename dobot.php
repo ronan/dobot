@@ -161,8 +161,7 @@ function dobot_matches($pattern, $lines = null) {
             ));
     }
 
-
-function dobot_file_path($path, $create = false) {
+function dobot_file_path($path = "README.md", $create = false) {
     if (substr($path, 0, 1) == '/' && file_exists($path)) return $path;
     $paths = [
         '.', './tasks', realpath(__DIR__) . '/tasks'
@@ -202,37 +201,46 @@ function dobot_sh($command = "echo 'dobot_sh() was called without a command'") {
 # if this script run directly from the command line.
 if (realpath($argv[0]) == realpath(__FILE__)) {
     $action = $argv[1] ?? 'do';
-    $readme = dobot_file_path("README.md");
+    $readme = dobot_file_path();
     if ($action == 'do'  && !$readme) die("There's no README.md in this directory. Try `dobot new`\n");
     if ($action == 'new' &&  $readme) die("A README.md file exists this directory. Try `dobot do`\n");
 
     if (in_array($action, ['new', 'redo'])) {
         $path = dobot_file_path("README.md", true);
-        $date = date("Y-m-d @ H:i:s");
-        $user = get_current_user();
+        $date = date("Y-m-d");
+        $user = dobot_sh('git config user.name');
+        $mail = dobot_sh('git config user.email');
         dobot_file([
-"# ===Untitled DoBot Project=== README
+"# Untitled DoBot Project
 
 ## About
 
-|       Config item | Value    
-| ----------------: | :----       
-| **Project Type:** | ``          
-|     **Git Repo:** |             
+|     Configuration | Value                  |
+| ----------------: | :--------------------- |
+|     **Git Repo:** |                        |
+|      **Version:** | 0.0.1                  |
 
 ## TODO
 - [x] Create README.md
-- [ ] Configure project
+- [-] Configure project
 
 ## Changelog
 
-**$date** by *$user*: Created this file at $path
+## Changelog
+
+## [0.0.1] - $date
+
+- **Added:** README.md file created automatically at $path for **$user**
+
+## Contributors
+
+- **🤖 DoBot:** <https://github.com/ronan/dobot>
+- **$user:** <$mail>
+
 "]);
     }
     else if ($action == 'do') {
-        if (!$readme) die("There's no README.md in this directory. Try `dobot new`\n");
-        dobot_log("", 0);
-
+        dobot_log("DoBot do", 0);
         foreach (dobot_matches('/^\- \[.?\] (.+)/') as $m) {
             dobot($m[1]);
         }

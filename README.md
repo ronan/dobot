@@ -1,22 +1,27 @@
-# Project READ ME
+# DoBot
+
+A simple tool for complex processes.
 
 ## About
 
-|       Config item | Value                  |
+|     Configuration | Value                  |
 | ----------------: | :--------------------- |
-| **Project Name:** | Untitled DoBot Project |
-| **Project Type:** | Pantheon
-|     **Git Repo:** | 
+|     **Git Repo:** | github.com/ronan/dobot |
+|      **Version:** | 0.0.1                  |
 
 ## Todo
 
-- [.] Configure project
-  - [x] Specify a project type
+- [x] Create initial version
+- [ ] Find a better name
 
-    - ( ) Custom
-    - (x) Pantheon
-    - ( ) Platform.sh
+## Changelog
 
-- [.] Test todos
-  - [x] Test Second Level Todo
-    - [.] Test Third Level Todo
+## [0.0.1] - 2023-12-09
+
+- **Added:**      Task *Create initial version* was addded manually by **Ronan Dowling**
+- **Completed:**  Task *Create initial version* was completed manually by **Ronan Dowling** (_took: 1m_)
+- **Added:**      Task *Find a better name* was addded manually by **Ronan Dowling**
+
+## Contributors
+
+- **Ronan Dowling:** <https://github.com/ronan>
