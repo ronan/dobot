@@ -227,8 +227,6 @@ if (realpath($argv[0]) == realpath(__FILE__)) {
 
 ## Changelog
 
-## Changelog
-
 ## [0.0.1] - $date
 
 - **Added:** README.md file created automatically at $path for **$user**
