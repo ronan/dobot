@@ -208,8 +208,8 @@ if (realpath($argv[0]) == realpath(__FILE__)) {
     if (in_array($action, ['new', 'redo'])) {
         $path = dobot_file_path("README.md", true);
         $date = date("Y-m-d");
-        $user = dobot_sh('git config user.name');
-        $mail = dobot_sh('git config user.email');
+        $user = trim(dobot_sh('git config user.name'));
+        $mail = trim(dobot_sh('git config user.email'));
         dobot_file([
 "# Untitled DoBot Project
 
@@ -221,6 +221,7 @@ if (realpath($argv[0]) == realpath(__FILE__)) {
 |      **Version:** | 0.0.1                  |
 
 ## TODO
+
 - [x] Create README.md
 - [-] Configure project
 
