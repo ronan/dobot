@@ -8,22 +8,23 @@ function dobot($key = null, $callback = null, $initial_state = ' ', $create_if_m
     dobot_log("🤖  do: $key");
 
     $task = dobot_read_task($key);
-    if (!$task && $create_if_missing && $p = dobot_read_task(end($stack))) {
-        $task = dobot_write_task([
-            'key'    => $key,
-            'state'  => $initial_state,
-            'indent' => $p['indent'] . '  ',
-            'idx'    => $p['next'],
-            'len'    => 0,
-            'output' => '',
-        ]);
+    if (!$task && $create_if_missing) {
+        if ($p = dobot_read_task(end($stack))) {
+            dobot_log("🤖 add: $key");
+            $task = dobot_write_task([
+                'key'    => $key,
+                'state'  => $initial_state,
+                'indent' => $p['indent'] . '  ',
+                'idx'    => $p['next'],
+                'len'    => 0,
+                'output' => '',
+            ]);
+        }
     }
     if (!$task) return;
 
     $stack[] = $task['key'];
-    if (!in_array($task['state'], ['x', '-'])) {
-        dobot_execute($task, $callback);
-    }
+    dobot_execute($task, $callback);
     array_pop($stack);
 
     dobot_log("🤖 end: $key");
@@ -31,20 +32,21 @@ function dobot($key = null, $callback = null, $initial_state = ' ', $create_if_m
 
 function dobot_execute($task, $callback) {
     static $last = null;
-    $last  = $task;
-    $task['state'] = '.';
-    $task  = dobot_write_task($task);
-    if ($f = dobot_file_path("$task[key].inc.php")) {
-        include($f);
+    $last = $task;
+    if (!in_array($task['state'], ['x', '-'])) {
+        if ($f = dobot_file_path("tasks/$task[key].inc.php")) {
+            include($f);
+        }
+        $task = dobot_write_task($task, ['state' => '.']);
+        $result = $callback ? call_user_func_array($callback, $task['args']) : '';
+        $result = $result ? $result : (($last['key'] == $task['key']) ? 'x' : '~');
+        if (is_string($result)) {
+            $state = substr($result, 0, 1);
+            $task['state']  = $state == "\n" ? ' ' : $state;
+            $task['output'] = explode("\n", substr($result, 1));
+        }
+        $task = dobot_write_task($task);
     }
-    $result = $callback ? call_user_func_array($callback, $task['args']) : ' ';
-    $result = $result ? $result : (($last == $task) ? 'x' : '~');
-    if (is_string($result)) {
-        $state = substr($result, 0, 1);
-        $task['state'] = $state == "\n" ? ' ' : $state;
-        $task['output'] = explode("\n", substr($result, 1));
-    }
-    $task   = dobot_write_task($task);
 }
 
 function dobot_read_task($key)
@@ -54,50 +56,53 @@ function dobot_read_task($key)
     $regex = preg_replace("/`.+`/", "`(.*)`", preg_quote($key));
     $regex = "|(?<indent> *)\- +\[(?<state>.)?\] (?<key>$regex)|";
 
-    $lines = dobot_file();
+    $lines = dobot_readme();
     if ($m = dobot_match($regex, $lines)) {
         unset($m[0], $m[1], $m[2], $m[3]);
         $task = array_intersect_key($m, array_flip(['indent', 'state', 'key', 'idx', 'regex']));
         $task['args'] = array_diff_key($m, $task, array_flip(range(0, 3)));
         $task['len'] = 1;
-        
-        $output = []; 
+        $task['output'] = []; 
+        $task['next'] = $task['idx'] + 1;
         $depth = strlen($task['indent']);
-        while(key($lines) <= $task['idx']) next($lines);
-        while (is_string($l = current($lines))) {
-            if ($l && dobot_indent_depth($l) <= $depth) {
-                prev($lines);
-                break;
-            }
-            if (substr($l, $depth + 2, 3) == "- [") {
-                while (empty($l) || dobot_indent_depth($l) > $depth) {
-                    $l = next($lines);
+        if (
+            $task['next'] + 1 < count($lines) &&
+            $lines[$task['next']] === ""  && 
+            dobot_indent_depth($lines[$task['next'] + 1]) >= $depth 
+        ) {
+            while (++$task['next'] < count($lines)) {
+                $l = $lines[$task['next']];
+                if ($l && dobot_indent_depth($l) <= $depth) {
+                    break;
                 }
-                break;
-            }
-            if ($l || $output) {
-                $output[] = $l;
-                $task['len'] = key($lines) - $task['idx'];
-            }
-            next($lines);
+                if (substr($l, $depth + 2, 3) == "- [") {
+                    while ($l === "" || dobot_indent_depth($l) > $depth) {
+                        $l = $lines[++$task['next']] ?? null;
+                    }
+                    break;
+                }
+                if ($l || $task['output']) {
+                    $output[] = $l;
+                }
+            }    
         }
-        $task['next']   = key($lines);
-        $task['len']    = count($output) + 1;
-        $task['output'] = dobot_reformat($output);
+        $task['len']    = count($task['output']) + 1;
+        $task['output'] = dobot_reformat($task['output']);
         return $task;
     }
 }
 
-function dobot_write_task($task, $result = null)
+function dobot_write_task($task, $changes = [])
 {
+    $task = $changes + $task;
     $markdown = [
         "$task[indent]- [$task[state]] $task[key]",
         ...dobot_reformat($task['output'], "$task[indent]  ")
     ];
 
-    $lines = dobot_file();
+    $lines = dobot_readme();
     array_splice($lines, $task['idx'], $task['len'], $markdown);
-    dobot_file($lines);
+    dobot_readme($lines);
 
     return dobot_read_task($task['key']);
 }
@@ -109,9 +114,12 @@ function dobot_trim_newlines($lines) {
     return [];
 }
 
-function dobot_indent_depth($line) {
-    if (is_array($line)) $line = reset($line);
-    return strlen($line) - strlen(ltrim($line, " "));
+function dobot_indent_depth($lines) {
+    return array_reduce(
+        (array)$lines,
+        fn($l, $line) => min($l, strlen($line) - strlen(ltrim($line, " "))),
+        100
+    );
 }
 
 function dobot_reformat($lines, $indent="") {
@@ -130,15 +138,20 @@ function dobot_reformat($lines, $indent="") {
     return $lines ? ['', ...$lines, ''] : [];
 }
 
-function dobot_file($lines = null) {
-    if (!$path = dobot_file_path("README.md", true)) {
-        return [];
-    }
-    if ($lines) {
-        $file = preg_replace("/\n\n+/", "\n\n", implode("\n", $lines));
-        file_put_contents($path, $file);
-    }
+function dobot_readme($lines = null) {
+    return dobot_file("README.md", $lines);
+}
 
+function dobot_file($path = null, $lines = null, $flags = 0) {
+    if (!$path) return [];
+    if ($lines) {
+        $path = dobot_file_path($path, true);
+        $lines = is_array($lines) ? implode("\n", $lines) : $lines;
+        $lines = preg_replace("/\n\n+/", "\n\n", $lines);
+        file_put_contents($path, $lines, $flags);
+    }
+    
+    $path = dobot_file_path($path);
     return file_exists($path) ? explode("\n", file_get_contents($path)) : false;
 }
 
@@ -149,7 +162,7 @@ function dobot_match($pattern, $lines = null) {
 }
 
 function dobot_matches($pattern, $lines = null) {
-    $lines = $lines ?? dobot_file();
+    $lines = $lines ?? dobot_readme();
     return
         array_filter(
             array_map(
@@ -162,7 +175,7 @@ function dobot_matches($pattern, $lines = null) {
             ));
     }
 
-function dobot_file_path($path = "README.md", $create = false) {
+function dobot_file_path($path, $create = false) {
     if (substr($path, 0, 1) == '/' && file_exists($path)) return $path;
     $paths = [
         '.', './tasks', realpath(__DIR__) . '/tasks'
@@ -180,7 +193,7 @@ function dobot_file_path($path = "README.md", $create = false) {
 }
 
 function dobot_config($key, $default = null) {
-    $lines = [implode('', dobot_file())];
+    $lines = [implode('', dobot_readme())];
     $key = preg_quote("**$key:**");
     $sep = "(`|\*\*)";
     if ($m = dobot_match("/$key.*?$sep([^$sep]*)$sep/", $lines)) {
@@ -195,8 +208,8 @@ function dobot_config_table($values) {
     $table = [];
     foreach ($values as $key => $val) {
         $table["**$key:**"] = "`$val`";
-        $key_length = max($key_length, strlen("**$key:**"));
-        $val_length = max($key_length, strlen("`$val`"));
+        $key_length = min(30, max($key_length, strlen("**$key:**")));
+        $val_length = min(50, max($key_length, strlen("`$val`")));
     }
     $table = [
         "Configuration" => "Value",
@@ -211,23 +224,46 @@ function dobot_config_table($values) {
     return "\n\n$out\n\n";
 }
 
+function dobot_table($values, $headers = null, $rules = null, $widths = null) {
+    $cols = array_reduce($values, fn ($c, $i) => max($c, count($i)));
+    $widths  = $widths  ?? array_fill(0, $cols, intval(80 / $cols));
+    $headers = $headers ?? array_fill(0, $cols, '');
+    $rules   = $rules   ?? array_fill(0, $cols, "-");
+    $values  = [$headers, $rules, ...$values];
+    $values  = array_map(
+        function($row) use ($widths) {
+            $padded = array_map(
+                fn($c, $w) => str_pad((string)$c, $w, ' '),
+                $row, $widths);
+            return "| " . implode(" | ", $padded) . " |";
+        }, $values);
+    return "\n\n" . implode ("\n", $values). "\n\n";
+}
+
 function dobot_log($msg, $flags = FILE_APPEND) {
-    $msg = date("c") . ": $msg\n";
-    echo $msg;
-    file_put_contents(dobot_file_path('dobot.log', true), $msg, $flags);
+    $prefix = date("c");
+    $msg = implode("\n", array_map(fn($l) => "$prefix: $l", explode("\n", (string)$msg)));
+    $msg = "$msg\n";
+    dobot_file('dobot.log', $msg, $flags);
+    fwrite(STDERR, $msg);
+}
+
+function dobot_prefix_lines($lines, $prefix) {
+    $lines = is_string($lines) ? explode("\n", $lines) : $lines;
+    return array_map(fn($l) => "$prefix: $l", $lines);
 }
 
 function dobot_sh($command = "echo 'dobot_sh() was called without a command'") {
-    dobot_log("-----\n> $command\n");
+    dobot_log("> $command\n");
     $out = `$command 2>&1`;
-    dobot_log(`$command 2>&1`);
+    dobot_log($out);
     return $out;
 }
 
-# if this script run directly from the command line.
+# If this script run directly from the command line.
 if (realpath($argv[0]) == realpath(__FILE__)) {
     $action = $argv[1] ?? 'do';
-    $readme = dobot_file_path();
+    $readme = dobot_file_path("README.md");
     if ($action == 'do'  && !$readme) die("There's no README.md in this directory. Try `dobot new`\n");
     if ($action == 'new' &&  $readme) die("A README.md file exists this directory. Try `dobot do`\n");
 
@@ -237,7 +273,7 @@ if (realpath($argv[0]) == realpath(__FILE__)) {
     if (in_array($action, ['new', 'redo'])) {
         $path = dobot_file_path("README.md", true);
         $date = date("Y-m-d");
-        dobot_file([
+        dobot_readme(
 "# Untitled DoBot Project
 
 ## About
@@ -259,14 +295,16 @@ if (realpath($argv[0]) == realpath(__FILE__)) {
 
 - **🤖 DoBot:** <https://github.com/ronan/dobot>
 - **$user:** <$mail>
-
-"]);
+");
     }
     else if ($action == 'do') {
+        $start = microtime(true);
         dobot_log("DoBot do run by $user", 0);
         foreach (dobot_matches('/^\- \[.?\] (.+)/') as $m) {
             dobot($m[1]);
         }
+        $took = microtime(true) - $start;
+        dobot_log("DoBot do run complete (took: $took ms)");
     }
 }
 
@@ -284,22 +322,12 @@ dobot("Configure project", function () {
         }
         return "!> Please pick a **Project Type:**\n\n$items";
     });
-    if ($current_type == 'Pantheon') {        
-        dobot("Configure a *Pantheon* project", function () {
-            $site_id = dobot_config("Pantheon Site ID");
-            $site_env = dobot_config("Pantheon Site ID", "dev");
-            $out = ($site_id && $site_env) ? "" : "!> Please fill out the following details:";
-            return $out . dobot_config_table([
-                "Pantheon Site ID"      => $site_id,
-                "Pantheon Environment"  => $site_env
-            ]);
-        });
+    if ($current_type) {
+        dobot("Configure a $current_type project");
     }
-    if ($current_type == 'Custom') {
-        dobot("Configure a *Custom* project", function () {
-            $git_repo = dobot_config("Git Repo");
-            $out = $git_repo ? "x" : "!> Please fill out the following details:";
-            return $out . dobot_config_table(["Git Repo" => $git_repo]);
-        });
-    }
+    dobot("Configure a Custom project", function () {
+        $git_repo = dobot_config("Git Repo");
+        $out = $git_repo ? "x" : "!> Please fill out the following details:";
+        return $out . dobot_config_table(["Git Repo" => $git_repo]);
+    }, ' ', false);
 });
