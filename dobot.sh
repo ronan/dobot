@@ -1,33 +1,37 @@
 #!/bin/sh
+set -e
 
-unset PARENT VERBOSE
-FILE='./README.md'
-TASK=".*"
+export DOBOT_FILE DOBOT_TASK DOBOT_PARENT DOBOT_VERBOSE DOBOT_PARENT
 
-while getopts 'd::f::t::p::v' c
+DOBOT_FILE='./README.md'
+DOBOT_TASK=".*"
+
+while getopts 'f::t::p::v' c
 do
   case $c in
-    f)    FILE=$OPTARG ;;
-    t)    TASK=$OPTARG ;;
-    p)  PARENT=$OPTARG ;;
-    v) VERBOSE=1       ;;
+    f)    DOBOT_FILE=$OPTARG ;;
+    t)    DOBOT_TASK=$OPTARG ;;
+    p)  DOBOT_PARENT=$OPTARG ;;
+    v) DOBOT_VERBOSE=1       ;;
+    *) action_help
+       exit 1 ;;
   esac
 done
 
-FILE_IN=$FILE
-FILE_OUT="$FILE.out"
+DOBOT_FILE_IN=$DOBOT_FILE
+DOBOT_FILE_OUT="$DOBOT_FILE.out"
 
 shift $((OPTIND-1))
 ACTION=${1:-"help"}
 
 main() {
   case $ACTION in
-        help) action_help ;;
-          do) action_do   ;;
+          do) action_do ;;
+         add) action_add "$@" ;;
+          ls) action_ls  "$@" ;;
          new) action_new  ;;
         redo) action_redo ;;
-         add) action_add  ;;
-          ls) action_ls   ;;
+        help) action_help ;;
          del) action_null ;;
           rm) action_null ;;
         list) action_null ;;
@@ -36,7 +40,7 @@ main() {
 }
 
 task_pattern() {
-  local t=$1; local s=$2
+  t=$1; s=$2
   echo "- [$s] $t\n" | sed -r -e 's/`.*`/`(.*)`/' -e 's/[\[&/\\]/\\&/g'
   #                               |                   |
   #                               |                 s/[\[&/\\]/\\&/g-> Add a '\' before '[', '/', '\'
@@ -44,57 +48,31 @@ task_pattern() {
 }
 
 task_indent() {
-  local t=$1
+  t=$1
   read_task_file | sed -rn "/$t/ s/^(\s*).*$/\1/g p" | tr -d '\n' | wc -c
   #                         |
   #                         s/^(\s*).*$/\1/g-------------------------> Replace the text with any leading spaces.
 }
 
 task_template() {
-  local t=$1; local d=$2 local o=$3;
-  debug "task_template t:$t\nd:$d\no:'$o'\n"
-
-  # If the first line starts with a single character that's the status.
-  # Otherwise the status is 'x' (done)
-  s=$(echo "$o" | sed -nr '/^(.)/ s/^(.).*$/\1/p') || 'x'
-  #                        |         |
-  #                        /^(.)/ -- | ------------------------------> Match any line beginging with any character and then a space.
-  #                               s/^(.).*$/\1/p --------------------> Replace the line with the first character and print it.
-
-  debug "t:$t, d:$d, o:'$o', s:'$s'"
-
-  o=$(echo "$o" | sed -r  "/^(.)$/d; /^(.) / s/^. ?//; s/^/$i  /")
-  #                            |        |       |         |
-  #                        /^(.)$/d; -- | ----- | ------- | ---------> If the line is just one character delete it.
-  #                                  /^(.) / -- | ------- | ---------> Find lines beginning with a character and then a space.
-  #                                          s/^. ?//; -- | ---------> Remove the first character and trailing space.
-  #                                                    s/^/$i  /-----> Indent 2 spaces deeper than the task itself.
-
-  if [ ! -z "$o" ]; then
-    o=$(echo "\n\n$o\n" | sed ':a;N;$!ba; s/\n/\\&/g' );
-    #                            |           |
-    #                          :a;N;$!ba; -- | ----------------------> Append the line to the pattern space and repeat until te last line.
-    #                                     s/\n/\\&/g ----------------> Add a backslash before every newline to escape for sed.
-  fi
-
-  printf '%*s' $d
-  echo "$(task_pattern "$t" "$s")$o\\n"
-}
-
-
-run_task() {
-  local p=$1
-  echo "! > Hello, World!";
+  t=$1; d=$2; transput=$3;
+  indent=$(printf '%*s' "$d" "")
+  
+  s="${transput% *}"
+  o="${transput#? }"
+  if [ ${#s}  != 1 ]; then s="x"; fi
+  if [ ${#o} -gt 1 ]; then o=$(printf "\n\n%s\n\n" "$o" | sed "s/^/$indent  /"); fi
+  
+  echo "$indent$(task_pattern "$t" "$s")$o" | sed ':a;N;$!ba; s/\n/\\&/g'
 }
 
 write_task() {
-  local p=$1; local t=$2 local d=$3; local o=$4;
-  local n=$(task_template "$t" "$d" "$o")
-  local tmp="$FILE.$random"
+  p="$1"; t="$2" d="$3"; o="$4";
+  n=$(task_template "$t" "$d" "$o")
 
-  [ $d -ne 0 ] && p=" {$d}$p"
+  [ "$d" -ne 0 ] && p=" {$d}$p"
 
-  debug "p:$p\nt:$t\nd:$d\no:$o\nn:$n'"
+  # debug "p:$p\nt:$t\nd:$d\no:$o\nn:$n'"
 
   read_task_file | sed -r "\
     /^## TODO/,/^#/ {
@@ -112,38 +90,35 @@ write_task() {
 }
 
 read_task() {
-  local p="$1"; local d="$2";
-  [ $d -ne 0 ] && p=" {$d}$p"
+  p="$1"; d="$2";
+  [ "$d" -ne 0 ] && p=" {$d}$p"
+  # debug "p:$p\nd:$d\n"
 
-  read_tasks | sed -rn "
-      /^$p/,/^ {0,$d}-/ {
-        /^ {0,}- \[/ {
-          /$p/! b
-        }
-        p
-      }"
-}
-
-read_tasks() {
-  read_task_file | sed -rn "/^## TODO/,/^#/ p"
+  read_task_file | sed -rn "\
+      /^## TODO/,/^#/ {
+        /^$p/,/^ {0,$d}-/ {
+          /^ {0,}- \[/ {
+            /$p/! b
+          }
+          p
+        }}"
 }
 
 read_task_file() {
-  cat $FILE_IN
+  cat "$DOBOT_FILE_IN"
 }
 
 write_task_file() {
-  local tmp="$FILE.$random"
-  cat - > $tmp;
-  if [ -f $tmp ]; then
-    mv $tmp $FILE_OUT
+  tmp="$DOBOT_FILE.$$"
+  cat - > "$tmp";
+  if [ -f "$tmp" ]; then
+    mv "$tmp" "$DOBOT_FILE_OUT"
     return
   fi
-
 }
 
 debug() { 
-  if [ $VERBOSE ]; then say "DEBUG:$@"; fi 
+  if [ $DOBOT_VERBOSE ]; then say "DEBUG:" "$@"; fi 
 }
 
 say() {
@@ -154,25 +129,22 @@ err() {
   say "$@"
   exit 1
 }
-
  
 ## Actions
 
 action_add() {
-  local t=${@:-$TASK}
-  local g="^$"
-  local d=0
+  t=${*:-$DOBOT_TASK}
+  g="^$"
+  d=0
 
-
-  if [ ! -z "$PARENT" ]; then
-    g=$(task_pattern "$PARENT" ".")
+  if [ -n "$DOBOT_PARENT" ]; then
+    g=$(task_pattern "$DOBOT_PARENT" ".")
     d=$(task_indent  "$g")
   fi
 
-  local n=$(task_template "$t" $(($d + 2)) ' ')
-  debug "t:$t\nd:$d\ng:$g\n'$i'"
+  n=$(task_template "$t" $((d + 2)) ' ')
+  debug "t:$t\nd:$d\ng:$g\n"
 
-  local tmp="$FILE.$random"
   # Todo: Figure out how to add to the root without leaving a space in the wrong place
   read_task_file | sed -r "$(printf '
     /^## TODO/,/^#/ {
@@ -186,24 +158,27 @@ action_add() {
 }
 
 action_do() {
-  local t=${@:-$TASK}
-  local p=$(task_pattern "$t" ".")
-  local d=$(task_indent  "$p")
-  local c=$(read_task    "$p" "$d")
+  p=$(task_pattern "$DOBOT_TASK" ".")
+  d=$(task_indent  "$p")
+  c=$(read_task    "$p" "$d")
 
-  debug "t:$t\np:$p\nd:$d\nc:$c\n"
+  if [ -z "$c" ]; then err "Could not find the task '$DOBOT_TASK'"; fi
 
-  if [ -z "$current" ]; then err "Could not find the task '$TASK'"; fi
+  # debug "t:$DOBOT_TASK\np:$p\nd:$d\nc:$c\n"
 
-  write_task "$p" "$t" "$d" "."
-  local result=$(run_task $p)
-  write_task "$p" "$t" "$d" "$result"
+  write_task "$p" "$DOBOT_TASK" "$d" "."
+
+  # Run the task
+  result="! > Hello, World!"
+
+  write_task "$p" "$DOBOT_TASK" "$d" "$result"
 }
 
 action_ls() {
-  p=$(task_pattern "${@:-$TASK}" ".")
+  t=$DOBOT_TASK
+  p=$(task_pattern "$t" ".")
   d=$(task_indent  "$p")
-
+  # debug "t:$t\np:$p\nd:$d\n"
   read_task "$p" "$d"
 }
 
@@ -212,8 +187,8 @@ action_null() {
 }
 
 action_new() {
-  if [ -f $FILE ]; then
-    echo "The file '$FILE' already exists. Try 'dobot redo' to start over."
+  if [ -f "$DOBOT_FILE" ]; then
+    echo "The file '$DOBOT_FILE' already exists. Try 'dobot redo' to start over."
     exit 1
   fi
   echo "\
@@ -223,14 +198,14 @@ action_new() {
 
 ## Contributors
 - **🤖 DoBot:** <https://github.com/ronan/dobot>
-" > $FILE
+" > "$DOBOT_FILE"
 }
 
 action_help() {
   echo "\
 # Dobot
 
-Usage: $0 [ -f README.md ] [ -t TASK ] [ -p PARENT ] action
+Usage: $0 [ -f README.md ] [ -t DOBOT_TASK ] [ -p DOBOT_PARENT ] action
 
 ## Actions:
 
@@ -276,11 +251,11 @@ debug "
 
      Key: | Value    
 --------: | :-----
-    file: | $FILE
-    task: | $TASK
+    file: | $DOBOT_FILE
+    task: | $DOBOT_TASK
+  parent: | $DOBOT_PARENT
+ verbose: | $DOBOT_VERBOSE
   action: | $ACTION
-  parent: | $PARENT
- verbose: | $VERBOSE
 "
 
 main "$@"

@@ -1,27 +1,20 @@
-# DoBot
-
-A simple tool for complex processes.
+# Untitled DoBot Project
 
 ## About
 
-|     Configuration | Value                  |
-| ----------------: | :--------------------- |
-|     **Git Repo:** | github.com/ronan/dobot |
-|      **Version:** | 0.0.1                  |
+**Version:** `0.0.1`
 
-## Todo
+## TODO
 
-- [x] Create initial version
-- [ ] Find a better name
+- [ ] Test Todos
 
 ## Changelog
 
-## [0.0.1] - 2023-12-09
+## [0.0.1] - 2023-12-13
 
-- **Added:**      Task *Create initial version* was addded manually by **Ronan Dowling**
-- **Completed:**  Task *Create initial version* was completed manually by **Ronan Dowling** (_took: 1m_)
-- **Added:**      Task *Find a better name* was addded manually by **Ronan Dowling**
+- **Added:** README.md file created automatically at ./README.md for **Ronan Dowling**
 
 ## Contributors
 
-- **Ronan Dowling:** <https://github.com/ronan>
+- **🤖 DoBot:** <https://github.com/ronan/dobot>
+- **Ronan Dowling:** <ronan@dowlings.me>
