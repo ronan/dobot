@@ -1,0 +1,4 @@
+#!/bin/sh
+
+echo "x > Hello, world! I'm testing the todos"
+debug "This is a debug statement"

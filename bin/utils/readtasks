@@ -1,0 +1,3 @@
+#!/bin/sh
+
+cat "$DOBOT_FILE_IN"

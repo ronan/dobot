@@ -1,0 +1,8 @@
+#!/bin/sh
+
+tmp="$DOBOT_FILE_IN.$$"
+cat - > "$tmp";
+if [ -f "$tmp" ]; then
+  mv "$tmp" "$DOBOT_FILE_OUT"
+  return
+fi
