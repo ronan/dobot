@@ -27,7 +27,7 @@ ACTION=${1:-"help"}
 main() {
   case $ACTION in
           do) action_do ;;
-         add) action_add "$@" ;;
+         add) action_add "$DOBOT_TASK" "$DOBOT_PARENT" ;;
           ls) action_ls  "$@" ;;
          new) action_new  ;;
         redo) action_redo ;;
@@ -40,18 +40,21 @@ main() {
 }
 
 task_pattern() {
-  t=$1; s=$2
-  echo "- [$s] $t\n" | sed -r -e 's/`.*`/`(.*)`/' -e 's/[\[&/\\]/\\&/g'
-  #                               |                   |
-  #                               |                 s/[\[&/\\]/\\&/g-> Add a '\' before '[', '/', '\'
-  #                               s/`.*`/`(.*)`/---------------------> Replace `XXX` with `.*`
+  t=$1; s=$2; d=${3:-0}
+  # shellcheck disable=SC3045
+  # shellcheck disable=SC2016
+  printf "%*s\n" "$d" "- [$s] $t" 
+    sed -r -e 's/`.*`/`(.*)`/' | sed -r 's/[\[&/\\]/\\&/g;'
+  #            |                         |
+  #            |                         s/[\[&/\\]/\\&/g; ----------> Escape [, &, \ and ] 
+  #            s/`.*`/`(.*)`/----------------------------------------> Replace `XXX` with `.*`
 }
 
 task_indent() {
   t=$1
+
   read_task_file | sed -rn "/$t/ s/^(\s*).*$/\1/g p" | tr -d '\n' | wc -c
-  #                         |
-  #                         s/^(\s*).*$/\1/g-------------------------> Replace the text with any leading spaces.
+  #                        s/^(\s*).*$/\1/g-------------------------> Replace the text with any leading spaces.
 }
 
 task_template() {
@@ -68,19 +71,17 @@ task_template() {
 
 write_task() {
   p="$1"; t="$2" d="$3"; o="$4";
-  n=$(task_template "$t" "$d" "$o")
+  new=$(task_template "$t" "$d" "$o")
 
-  [ "$d" -ne 0 ] && p=" {$d}$p"
-
-  # debug "p:$p\nt:$t\nd:$d\no:$o\nn:$n'"
+  [ "$d" -ne 0 ] && task=" {$d}$p"
 
   read_task_file | sed -r "\
     /^## TODO/,/^#/ {
-      /^$p$/,/^ *- \[/ {
+      /^$task$/,/^ *- \[/ {
         # Append the task with the new content
-        /^$p/a\\$n
+        /^$task/a\\$new
         # Delete the original line
-        /^$p/d
+        /^$task/d
         # If the line has a todo then break
         /^ *- \[/b
         # Delete the output
@@ -91,14 +92,15 @@ write_task() {
 
 read_task() {
   p="$1"; d="$2";
-  [ "$d" -ne 0 ] && p=" {$d}$p"
-  # debug "p:$p\nd:$d\n"
+
+  [ "$d" -ne 0 ] && task=" {$d}$p"
+  debug "p:$p\nd:$d\n"
 
   read_task_file | sed -rn "\
       /^## TODO/,/^#/ {
-        /^$p/,/^ {0,$d}-/ {
+        /^$task/,/- \[/ {
           /^ {0,}- \[/ {
-            /$p/! b
+            /$task/! b
           }
           p
         }}"
@@ -118,7 +120,7 @@ write_task_file() {
 }
 
 debug() { 
-  if [ $DOBOT_VERBOSE ]; then say "DEBUG:" "$@"; fi 
+  if [ "$DOBOT_VERBOSE" ]; then say "DEBUG:" "$@"; fi 
 }
 
 say() {
@@ -132,46 +134,56 @@ err() {
  
 ## Actions
 
-action_add() {
-  t=${*:-$DOBOT_TASK}
-  g="^$"
-  d=0
+quote_task() {
+  sed -r -e 's/`.*`/`(.*)`/' | sed -r 's/[\[&/\\]/\\&/g;'
+}
 
-  if [ -n "$DOBOT_PARENT" ]; then
-    g=$(task_pattern "$DOBOT_PARENT" ".")
-    d=$(task_indent  "$g")
+action_add() {
+  set "$1"
+  task=$(echo "$1" | quote_task)
+  if [ -n "$2" ]; then 
+    parent=$(echo "$2" | quote_task)
+    indent=$(read_task_file | sed -rn "/$parent/ s/^(\s*).*$/\1/g p" | tr -d '\n')
+  else
+    parent="$(read_task_file | sed -n '/\#\# TODO/,/^\#/ { /^-/p }' | tail -n1 | quote_task)"
+    indent=""
   fi
 
-  n=$(task_template "$t" $((d + 2)) ' ')
-  debug "t:$t\nd:$d\ng:$g\n"
+  debug "
+  Adding the task: '$indent- \[ ] $task'
+            after: '$parent'"
 
-  # Todo: Figure out how to add to the root without leaving a space in the wrong place
-  read_task_file | sed -r "$(printf '
-    /^## TODO/,/^#/ {
-      /%s$/,/^ {0,%d}- \[/ {
-        /%s/b
-        /^$/b
-        /^ {%d}/b
-        i\\%s
-      }
-    }' "$g" "$d" "$g" "$d" "$n")" | write_task_file
+  read_task_file | 
+      sed -re "/$indent- \[.] $parent/{:a;n;/^$indent /ba;i\\$indent- \[ ] $task" -e '}'\
+    | write_task_file
 }
 
 action_do() {
-  p=$(task_pattern "$DOBOT_TASK" ".")
-  d=$(task_indent  "$p")
-  c=$(read_task    "$p" "$d")
+  pattern=$(echo "$DOBOT_TASK" | quote_task) || err "No task specified"
+     line=$(read_task_file | sed -rn "/$pattern/p")
 
-  if [ -z "$c" ]; then err "Could not find the task '$DOBOT_TASK'"; fi
+  pattern="^( *)- \[(.?)] (.*)$";
+   indent=$(echo "$line" | sed -nr "s/$pattern/\1/p")
+   status=$(echo "$line" | sed -nr "s/$pattern/\2/p")
+     task=$(echo "$line" | sed -nr "s/$pattern/\3/p" | quote_task)
+  
+  if [ -z "$task" ]; then err "Could not find the task '$DOBOT_TASK'"; fi
 
-  # debug "t:$DOBOT_TASK\np:$p\nd:$d\nc:$c\n"
-
-  write_task "$p" "$DOBOT_TASK" "$d" "."
+  read_task_file | sed -r "s/$indent- \[.] $task/$indent- \[.] $task/" | write_task_file
 
   # Run the task
-  result="! > Hello, World!"
+  transput="\
+! > Hello, World 
+> again!"
 
-  write_task "$p" "$DOBOT_TASK" "$d" "$result"
+  status="${transput%% *}"
+  output="${transput#? }"
+  if [ ${#status}  != 1 ]; then status="x"; fi
+  if [ ${#output} -gt 1 ]; then
+    output=$(echo "$output" | sed "s/^/$indent  /")
+    output=$(printf "\n\n%s\n\n" "$output" | awk -v ORS= '{print sep $0; sep="\\n"}')
+  fi  
+  read_task_file | sed -r "s/$indent- \[.] $task/$indent- \[$status] $task$output/" | write_task_file
 }
 
 action_ls() {
@@ -196,7 +208,10 @@ action_new() {
 
 ## TODO
 
+- [x] Create TODO list
+
 ## Contributors
+
 - **🤖 DoBot:** <https://github.com/ronan/dobot>
 " > "$DOBOT_FILE"
 }
@@ -237,7 +252,6 @@ help
 
 -t *pattern*
 : Run all tasks that match the given *pattern*
-
 
 -p *pattern*
 : Restrict action to subtasks of tasks matching the given *pattern*
