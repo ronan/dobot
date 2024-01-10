@@ -26,7 +26,7 @@ do
 done
 
 export  DOBOT_FILE_IN="$DOBOT_FILE"
-export DOBOT_FILE_OUT="$DOBOT_FILE.out"
+export DOBOT_FILE_OUT="$DOBOT_FILE"
 
 shift $((OPTIND-1))
 ACTION=${1:-"help"}
@@ -41,7 +41,7 @@ action_add() {
     parent=$(echo "$2" | quotetask)
     indent=$(readtasks | sed -rn "/$parent/ s/^(\s*).*$/\1/g p" | tr -d '\n')
   else
-    parent="$(readtasks | sed -n '/\#\# TODO/,/^\#/ { /^-/p }' | tail -n1 | quote_task)"
+    parent="$(readtasks | sed -n '/\#\# TODO/,/^\#/ { /^-/p }' | tail -n1 | quotetask)"
     indent=""
   fi
 
@@ -104,7 +104,8 @@ action_do() {
 
   # Run the task
   debug "Running the task: '$task'"
-  transput=$(echo "$transput" | "$task")
+  # Todo, pass arguments
+  transput=$( echo "$transput" | DOBOT_PARENT="$task" "$task")
   debug "Completed with output: \n'$transput'"
 
   status="${transput%% *}"

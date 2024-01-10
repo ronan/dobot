@@ -1,4 +1,3 @@
 .DS_Store
 *.log
-node-modules
-vscode-dobot/node_modules/.modules.yaml
+node_modules
