@@ -1,22 +1,21 @@
 #!/bin/sh
-set -e
 
 # Dobot Shell Script
-
-scriptdir=$(CDPATH=' ' cd -- "$(dirname -- "$0")" && pwd)
+scriptdir="/workspace"
 PATH="$scriptdir/bin/tasks:$scriptdir/bin/utils:$PWD/tasks:$PATH"
 
-export DOBOT_FILE DOBOT_TASK DOBOT_PARENT DOBOT_VERBOSE DOBOT_PARENT DOBOT_STACK
+export DOBOT_FILE DOBOT_TASK DOBOT_PARENT DOBOT_VERBOSE DOBOT_PARENT DOBOT_STACK DOBOT_RUN
 
-DOBOT_FILE='./README.md'
+DOBOT_FILE='./DOBOT.md'
 DOBOT_TASK=""
 
-while getopts 'f::t::p::uva' c
+while getopts 'f::t::p::r::uva' c
 do
   case $c in
     f)    DOBOT_FILE=$OPTARG ;;
     t)    DOBOT_TASK=$OPTARG ;;
     p)  DOBOT_PARENT=$OPTARG ;;
+    r)     DOBOT_RUN=$OPTARG ;;
     u) DOBOT_UNCHECK=1       ;;
     v) DOBOT_VERBOSE=1       ;;
     a)     DOBOT_ALL=1       ;;
@@ -26,32 +25,47 @@ do
 done
 
 export  DOBOT_FILE_IN="$DOBOT_FILE"
-export DOBOT_FILE_OUT="$DOBOT_FILE"
+export DOBOT_FILE_OUT="$DOBOT_FILE.out"
 
 shift $((OPTIND-1))
 ACTION=${1:-"help"}
 
-
 ## Actions
 
 action_add() {
-  set "$1"
-  task=$(echo "$1" | quotetask)
-  if [ -n "$2" ]; then 
-    parent=$(echo "$2" | quotetask)
+  task=$(echo "$DOBOT_TASK" | quotetask)
+  if [ -n "$DOBOT_PARENT" ]; then 
+    parent=$(echo "$DOBOT_PARENT" | quotetask  | awk '{print "] " $0 "$"}')
     indent=$(readtasks | sed -rn "/$parent/ s/^(\s*).*$/\1/g p" | tr -d '\n')
+    after=$(readtasks | sed -rn "
+      /^\#+ TODO\$/,/^\#/ { 
+        /$parent/,/^ {0,${#indent}}\-/ { 
+          /^ {${#indent},}-/ p
+        }
+      }" | tail -n1 | quotetask)
+    after=$(readtasks | sed -rn "
+      /^\#+ TODO\$/,/^\#/ { 
+        /$parent/,/^ {0,${#indent}}-/ {
+          /$parent/p;
+          /^ {0,${#indent}}-/b
+          /^ {${#indent},}-/p
+        }
+      }" | tail -n1 | quotetask)
   else
-    parent="$(readtasks | sed -n '/\#\# TODO/,/^\#/ { /^-/p }' | tail -n1 | quotetask)"
-    indent=""
+    after=$(readtasks | sed -rn "
+      /^\#+ TODO\$/,/^\#/ { 
+        /^ *-/p
+      }" | tail -n1 | quotetask)    
+      indent=""
   fi
 
   debug "
-  Adding the task: '$indent- \[ ] $task'
-            after: '$parent'"
+  Adding the task: '$task'
+            after: '$after'"
 
-  readtasks |
-      sed -re "/$indent- \[.] $parent/{:a;n;/^$indent /ba;i\\$indent- \[ ] $task" -e '}' |
-      writetasks
+  task="$indent  - \[ ] $task"
+  if [ -z "$after" ]; then err "Could not find '$DOBOT_PARENT'"; exit; fi
+  readtasks | sed -re "/^$after\$/{a\\$task" -e '}' | writetasks
 }
 
 action_do() {
@@ -213,7 +227,7 @@ debug "
 "
 
 case $ACTION in
-        add) action_add "$DOBOT_TASK" "$DOBOT_PARENT" ;;
+        add) action_add ;;
         do) action_do   ;;
         new) action_new  ;;
       redo) action_redo ;;
