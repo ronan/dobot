@@ -76,7 +76,10 @@ $0 -a do                  # do all unchecked tasks"
 dotask() {
   debug "Running the task: '$DOBOT_TASK'"
   echo "." | settask
-  tasktransput | DOBOT_PARENT="$DOBOT_TASK" "$DOBOT_TASK" | settask
+  output=$(tasktransput | DOBOT_PARENT="$DOBOT_TASK" "$DOBOT_TASK")
+  [ -n "$output" ] || output="x"
+  echo "$output" | settask
+  debug "Task complete with output: $output"
 }
 
 action_null() {

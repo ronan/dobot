@@ -4,8 +4,9 @@ tmp="$DOBOT_FILE_IN.$$"
 
 {
   cat "$DOBOT_FILE_IN" | sed -r "1,/^\#+ TODO\$/ { p; }; d";
+  echo ""
   cat - | trimnewlines
-  echo "\n"
+  echo ""
   cat "$DOBOT_FILE_IN" | sed -r "/^\#+ Contributors\$/,$ { p; }; d"
 } > "$tmp"
 

@@ -17,12 +17,11 @@ function dobot($key = null, $callback = null)
     if ($callback) {
         $parent = getenv("DOBOT_PARENT");
         putenv("DOBOT_PARENT=$key");
-        $result = call_user_func_array($callback, $args) ?? "!";
-        $transput = escapeshellarg($result);
+        $transput = call_user_func_array($callback, $args) ?? "x";
         putenv("DOBOT_PARENT=$parent");
     }
+    $transput = escapeshellarg($transput);
     dobot_sh("echo $transput | dobot -t \"$key\" set");
-
     dobot_log($transput);
     dobot_log("🤖 end: $key");
 }

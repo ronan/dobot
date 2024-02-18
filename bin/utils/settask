@@ -1,44 +1,48 @@
 #!/bin/sh
 set -e
+[ -n "$DOBOT_TASK" ] || err "No task to add";
 
-task=$(gettask)
+  pattern=$(echo "$DOBOT_TASK" | quotetask)
+     task=$(readtasks | sed -rn "/$pattern$/,/- \[/ { /$pattern$/ { p; b }; /- \[/b; p; }")
+   indent=$(echo "$task" | head -n 1 | sed -nr "s/^( *)- \[.?] .*$/\1/p")
+   status=$(echo "$task" | head -n 1 | sed -nr "s/^ *- \[(.?)] .*$/\1/p")
+ transput=$(echo "$task" | tail +2)
+   parent=""
+     find=$task
+
 if [ -z "$task" ]; then
-  task=$(addtask)
-fi
+  debug "Adding '$DOBOT_TASK'"
 
-# transput=$(echo "$task" | tail +2)
-# status=$(echo "$task" | head -n 1 | sed -nr "s/^ *- \[(.?)] .*$/\1/p")
-indent=$(echo "$task" | head -n 1 | sed -nr "s/^( *)- \[.?] .*$/\1/p")
+  find="$"
+  task="- [ ] $DOBOT_TASK"
 
-output=$(cat)
-if [ -n "$output" ]; then
-  status=${output%% *}
-  if [ ${#status} != 1 ]; then status="x"; fi
+  if [ -n "$DOBOT_PARENT" ]; then
+    pattern=$(echo "$DOBOT_PARENT" | quotetask)
+     indent=$(readtasks | sed -nr "s/^( *)- \[.?] $pattern$/\1/p")
+    pattern="^$indent- \[.*] $(echo "$DOBOT_PARENT" | quotetask)$"
+     parent=$(readtasks | sed -rn "/$pattern/,$ { /^$indent/p; /^$/p; b; }")
 
-  transput="${output#?}"
-  if [ ${#transput} -gt 1 ]; then
-    transput="$(echo "${output#?}" | sed "s/^/$indent  /")"
-    transput=$(echo "$transput" | awk -v ORS= '{print sep $0; sep="\\n"}')
-    transput="\n\n$transput"
-  else
-    transput=""
+    [ -n "$parent" ] || err "Could not find parent $DOBOT_PARENT";
+
+     indent="$indent  "
+       find=$parent
   fi
 fi
 
-# replace=$(echo "$replace" | sedquote)
+stdin=$(cat)
+if [ -n "$stdin" ]; then
+  status=${stdin%% *}
+  transput=${stdin#?}
+fi
 
-find=$(gettask)
-[ -n "$find" ] || err "Cannot find '$DOBOT_TASK'"
-replace="$indent- [$status] $DOBOT_TASK$transput"
+replace="$parent\n$indent- [$status] $DOBOT_TASK"
+if [ -n "$transput" ]; then
+  replace="$replace\n$(echo "$transput" | sed "s/^ */$indent  /")"
+fi
 
-readtasks | tr '\n' '\f' |
-  sed -rz "s/$(echo "$find" | sedquote)/$(echo "$replace" | sedquote)/" | 
-  tr '\f' '\n' | writetasks
-echo "$task";
+readtasks | sed -z "s/$(quotesed "$find")/$(quotesed "$replace")/" | writetasks
 
-# readtasks | tr '\n' '\f' | sed -rz "s/$(echo "$find" | sedquote)/$(echo "$replace" | sedquote)/" | tr '\f' '\n' | writetasks
-
-debug "## Changes to task
+debug "## Set task
 
      Key: | Value    
 --------: | :-----
