@@ -9,23 +9,25 @@ if [ -n "$stdin" ]; then
 fi
 
 task=$(gettask)
-if [ -z "$task" ]; then
+if [ -n "$task" ]; then
+  debug "Modifying '$DOBOT_TASK'"
+
+     find=$task
+   status=${status:-$(echo "$task" | taskstatus)}
+   indent=$(echo "$task" | taskindent)
+  replace="$indent- [${status:- }] $DOBOT_TASK"
+ transput=${transput:-$(echo "$task" | tasktransput)}
+else
   debug "Adding '$DOBOT_TASK'"
 
+  # TODO: find a way to put new items with no parent at the end
   find="$"
-  task="- [ ] $DOBOT_TASK"
-
   if [ -n "$DOBOT_PARENT" ]; then
       find=$(DOBOT_TASK="$DOBOT_PARENT" gettask -a)
+    status=${status:- }
     indent="$(echo "$find" | taskindent)"
    replace="$find\n$indent  - [$status] $DOBOT_TASK"
   fi
-else
-   indent=$(echo "$task" | taskindent)
-   status=${status:-$(echo "$task" | head -n 1 | sed -nr "s/^ *- \[(.?)] .*$/\1/p")}
- transput=${transput:-$(echo "$task" | tail +2)}
-  replace="$indent- [${status:- }] $DOBOT_TASK"
-     find=$task
 fi
 
 if [ -n "$transput" ]; then

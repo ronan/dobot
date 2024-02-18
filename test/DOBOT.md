@@ -6,10 +6,10 @@
 
 ## TODO
 
-- [.] Test Todos
+- [x] Test Todos
   - [x] Test a todo with an output
-    > This is a simple output Sun, 18 Feb 2024 19:49:45 +0000
-  - [.] Test Second Level Todo
+    > This is a simple output Sun, 18 Feb 2024 20:18:59 +0000
+  - [~] Test Second Level Todo
     - [!] Test Third Level Todo 1
     - [!] Test Third Level Todo 2
     - [x] Test Third Level Todo 3
@@ -17,7 +17,7 @@
       > ¿Como Estas?
     - [!] Test Third Level Todo 4
   - [x] Test Another Second Level Todo
-    > Hello, World Sun, 18 Feb 2024 19:50:11 +0000
+    > Hello, World Sun, 18 Feb 2024 20:19:01 +0000
 
 ## Contributors
 

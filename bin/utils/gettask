@@ -11,14 +11,14 @@ while getopts 'ta' c; do
   esac
 done
 
-pattern=$(echo "$DOBOT_TASK" | quotetask)
+pattern="^( *)- \[.*\] $(echo "$DOBOT_TASK" | quotetask)$"
 if [ $taskonly = true ]; then
-  task=$(readtasks | sed -rn "/$pattern$/p")
+  task=$(readtasks | sed -rn "/$pattern/p")
 elif [ $subtasks = true ]; then
-  indent=$(readtasks | sed -nr "s/^( *)- \[.?] $pattern$/\1/p")
+  indent=$(readtasks | sed -nr "s/$pattern/\1/p")
   task=$(readtasks | sed -rn "/$pattern/,$ { /^$indent/p; /^$/p; b; }")
 else
-  task=$(readtasks | sed -rn "/$pattern$/,$ { /$pattern$/p; /- \[/!p; }")
+  task=$(readtasks | sed -rn "/$pattern/,$ { /$pattern/ { p; b; }; /- \[/q; p; }")
 fi
 
 # if [ -z "$task" ]; then err "Could not find $DOBOT_TASK"; fi
