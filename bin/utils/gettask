@@ -1,35 +1,7 @@
 #!/bin/sh
 
-
-taskonly=false
-subtasks=false
-while getopts 'ta' c; do
-  case $c in
-    t) taskonly=true ;;
-    a) subtasks=true ;;
-    *) err "Invalid flag '$c'" ;;
-  esac
-done
-
-pattern="^( *)- \[.*\] $(echo "$DOBOT_TASK" | quotetask)$"
-if [ $taskonly = true ]; then
-  task=$(readtasks | sed -rn "/$pattern/p")
-elif [ $subtasks = true ]; then
-  indent=$(readtasks | sed -nr "s/$pattern/\1/p")
-  task=$(readtasks | sed -rn "/$pattern/,$ { /^$indent/p; /^$/p; b; }")
-else
-  task=$(readtasks | sed -rn "/$pattern/,$ { /$pattern/ { p; b; }; /- \[/q; p; }")
-fi
+pattern="^( *)- \[.*\] $(quotetask "$DOBOT_TASK")$"
+task=$(readtasks | sed -rn "/$pattern/,$ { /$pattern/ { p; b; }; /- \[/q; p; }")
 
 # if [ -z "$task" ]; then err "Could not find $DOBOT_TASK"; fi
-
 echo "$task";
-
-debug \
-"## Task read from file
-
-     Key: | Value
---------: | :-----
- pattern: | $pattern
-  task:   | $task
-"
