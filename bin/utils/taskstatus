@@ -1,4 +1,3 @@
 #!/bin/sh
 
-pattern=$(echo "$DOBOT_TASK" | quotetask)
-readtasks | sed -nr "s/^ *- \[(.?)] $pattern$/\1/p"
+head -n 1 | sed -nr "s/^ *- \[(.?)]$/\1/p"

@@ -2,14 +2,13 @@
 set -e
 [ -n "$DOBOT_TASK" ] || err "No task to add";
 
-  pattern=$(echo "$DOBOT_TASK" | quotetask)
-     task=$(readtasks | sed -rn "/$pattern$/,/- \[/ { /$pattern$/ { p; b }; /- \[/b; p; }")
-   indent=$(echo "$task" | head -n 1 | sed -nr "s/^( *)- \[.?] .*$/\1/p")
-   status=$(echo "$task" | head -n 1 | sed -nr "s/^ *- \[(.?)] .*$/\1/p")
- transput=$(echo "$task" | tail +2)
-   parent=""
-     find=$task
+stdin=$(cat)
+if [ -n "$stdin" ]; then
+  status=${stdin%% *}
+  transput=${stdin#?}
+fi
 
+task=$(gettask)
 if [ -z "$task" ]; then
   debug "Adding '$DOBOT_TASK'"
 
@@ -17,25 +16,18 @@ if [ -z "$task" ]; then
   task="- [ ] $DOBOT_TASK"
 
   if [ -n "$DOBOT_PARENT" ]; then
-    pattern=$(echo "$DOBOT_PARENT" | quotetask)
-     indent=$(readtasks | sed -nr "s/^( *)- \[.?] $pattern$/\1/p")
-    pattern="^$indent- \[.*] $(echo "$DOBOT_PARENT" | quotetask)$"
-     parent=$(readtasks | sed -rn "/$pattern/,$ { /^$indent/p; /^$/p; b; }")
-
-    [ -n "$parent" ] || err "Could not find parent $DOBOT_PARENT";
-
-     indent="$indent  "
-       find=$parent
+      find=$(DOBOT_TASK="$DOBOT_PARENT" gettask -a)
+    indent="$(echo "$find" | taskindent)"
+   replace="$find\n$indent  - [$status] $DOBOT_TASK"
   fi
+else
+   indent=$(echo "$task" | taskindent)
+   status=${status:-$(echo "$task" | head -n 1 | sed -nr "s/^ *- \[(.?)] .*$/\1/p")}
+ transput=${transput:-$(echo "$task" | tail +2)}
+  replace="$indent- [${status:- }] $DOBOT_TASK"
+     find=$task
 fi
 
-stdin=$(cat)
-if [ -n "$stdin" ]; then
-  status=${stdin%% *}
-  transput=${stdin#?}
-fi
-
-replace="$parent\n$indent- [$status] $DOBOT_TASK"
 if [ -n "$transput" ]; then
   replace="$replace\n$(echo "$transput" | sed "s/^ */$indent  /")"
 fi

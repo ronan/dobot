@@ -52,7 +52,7 @@ $0 -t 'Name of task' do   # do the named task
 $0 -a do                  # do all unchecked tasks"
   fi
 
-  status=$(taskstatus)
+  status=$(gettask | taskstatus)
 
   if [ "$DOBOT_ACTION" = "get" ] && [ -z "$status" ]; then
     err "Could not find the task '$DOBOT_TASK' in '$DOBOT_FILE'";
@@ -76,7 +76,7 @@ $0 -a do                  # do all unchecked tasks"
 dotask() {
   debug "Running the task: '$DOBOT_TASK'"
   echo "." | settask
-  output=$(tasktransput | DOBOT_PARENT="$DOBOT_TASK" "$DOBOT_TASK")
+  output=$(gettask | tasktransput | DOBOT_PARENT="$DOBOT_TASK" "$DOBOT_TASK")
   [ -n "$output" ] || output="x"
   echo "$output" | settask
   debug "Task complete with output: $output"

@@ -13,6 +13,6 @@ dobot('Test Second Level Todo', function() {
   return('~');
 });
 
-// dobot('Test Another Second Level Todo', function() {
-//   return('x > Hello, World ' . date('r'));
-// });
+dobot('Test Another Second Level Todo', function() {
+  return('x > Hello, World ' . date('r'));
+});
