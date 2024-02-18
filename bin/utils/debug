@@ -1,3 +1,0 @@
-#!/bin/sh
-
-if [ "$DOBOT_VERBOSE" ]; then say "DEBUG:" "$@"; fi 

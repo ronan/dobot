@@ -1,9 +1,0 @@
-#!/bin/sh
-
-pattern="^( *)- \[.*\] $(quotetask "$DOBOT_PARENT")$"
-indent=$(readtasks | sed -nr "s/$pattern/\1/p")
-parent=$(readtasks | sed -rn "/$pattern/,$ { /^$indent/p; /^$/p; b; }")
-
-if [ -z "$parent" ]; then err "Could not find $DOBOT_PARENT"; fi
-
-echo "$parent";

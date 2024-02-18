@@ -1,4 +1,0 @@
-#!/bin/sh
-
-# shellcheck disable=SC2016
-echo "$@" | sed -r -e 's/`.*`/`(.*)`/' | sed -r 's/[\[&/\\]/\\&/g;'
