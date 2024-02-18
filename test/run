@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cp /workspace/test/IN.md /workspace/test/DOBOT.md;
+dobot -v -t "Test Todos" "do"

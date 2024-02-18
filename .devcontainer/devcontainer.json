@@ -1,14 +1,50 @@
 {
 	"name": "Dobot Dev",
-	"image": "mcr.microsoft.com/devcontainers/php:1-8.2-bullseye",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "devcontainer",
+	"workspaceFolder": "/workspace",
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {
+			"ppa": true,
+			"version": "os-provided"
+		},
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+			"moby": true,
+			"installDockerBuildx": true,
+			"version": "latest",
+			"dockerDashComposeVersion": "v2"
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "16",
+			"nvmVersion": "latest"
+		},
+		"ghcr.io/devcontainers-contrib/features/gulp-cli:2": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/python:1": {
+			"installTools": true,
+			"version": "os-provided"
+		}
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"yzhang.markdown-all-in-one",
 				"DavidAnson.vscode-markdownlint",
-				"timonwong.shellcheck"
-			]
+				"timonwong.shellcheck",
+				"emeraldwalk.RunOnSave"
+			],
+			"settings": {
+				"emeraldwalk.runonsave": {
+					"commands": [
+						{
+							"match": "/workspace/.devcontainer/bin/todo.php",
+							"isAsync": true,
+							"cmd": "php /workspace/.devcontainer/bin/todo.php"
+						}
+					]
+				}
+			}
 		}
-	},
-	"postCreateCommand": "ln -s /workspaces/dobot/vscode-dobot/ /home/vscode/.vscode-server/extensions/"
+	}
 }

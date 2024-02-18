@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 # Dobot Shell Script
 scriptdir="/workspace"
@@ -18,122 +19,64 @@ do
     r)     DOBOT_RUN=$OPTARG ;;
     u) DOBOT_UNCHECK=1       ;;
     v) DOBOT_VERBOSE=1       ;;
-    a)     DOBOT_ALL=1       ;;
+    # a)     DOBOT_ALL=1       ;;
     *) action_help
        exit 1 ;;
   esac
 done
 
 export  DOBOT_FILE_IN="$DOBOT_FILE"
-export DOBOT_FILE_OUT="$DOBOT_FILE.out"
+export DOBOT_FILE_OUT="$DOBOT_FILE"
 
 shift $((OPTIND-1))
 ACTION=${1:-"help"}
 
-## Actions
+err() {
+  say "\n## ! $1"
+  if [ -n "$2" ]; then
+    usage=$(echo "$2" | sed 's/^/> /') 
+    say "
+Try:
 
-action_add() {
-  task=$(echo "$DOBOT_TASK" | quotetask)
-  if [ -n "$DOBOT_PARENT" ]; then 
-    parent=$(echo "$DOBOT_PARENT" | quotetask  | awk '{print "] " $0 "$"}')
-    indent=$(readtasks | sed -rn "/$parent/ s/^(\s*).*$/\1/g p" | tr -d '\n')
-    after=$(readtasks | sed -rn "
-      /^\#+ TODO\$/,/^\#/ { 
-        /$parent/,/^ {0,${#indent}}\-/ { 
-          /^ {${#indent},}-/ p
-        }
-      }" | tail -n1 | quotetask)
-    after=$(readtasks | sed -rn "
-      /^\#+ TODO\$/,/^\#/ { 
-        /$parent/,/^ {0,${#indent}}-/ {
-          /$parent/p;
-          /^ {0,${#indent}}-/b
-          /^ {${#indent},}-/p
-        }
-      }" | tail -n1 | quotetask)
-  else
-    after=$(readtasks | sed -rn "
-      /^\#+ TODO\$/,/^\#/ { 
-        /^ *-/p
-      }" | tail -n1 | quotetask)    
-      indent=""
-  fi
-
-  debug "
-  Adding the task: '$task'
-            after: '$after'"
-
-  task="$indent  - \[ ] $task"
-  if [ -z "$after" ]; then err "Could not find '$DOBOT_PARENT'"; exit; fi
-  readtasks | sed -re "/^$after\$/{a\\$task" -e '}' | writetasks
-}
-
-action_do() {
-  parse_task_pattern="^( *)- \[(.?)] (.*)$";
-
-  if [ "$DOBOT_ALL" ]; then
-    :
-    # pattern="^- \["
-    # DOBOT_ALL=0
-    # while 
-    #   line=$(readtasks | sed -rn "/$pattern/p") &&
-    #   task=$(echo "$line" | sed -nr "s/$pattern/\3/p")
-    # do
-    #   DOBOT_TASK="$task";
-    #   action_do
-    # done
-    # exit
-  fi
-
-  if [ -z "$DOBOT_TASK" ]; then err "\
-## No task specified!
-  
-  > Try:
-  > $0 -t 'Name of task' do
-  > or
-  > $0 -a do
-  > To run all unchecked tasks
+$usage
 "
   fi
+  exit 1;
+}
 
-  find_task_pattern=$(echo "$DOBOT_TASK" | quotetask)  
-  line=$(readtasks | sed -rn "/$find_task_pattern/p")
+## Actions
+action_do() {
 
-  if [ -z "$line" ]; then err "Could not find the task '$DOBOT_TASK' in '$DOBOT_FILE'"; fi
-
-   indent=$(echo "$line" | sed -nr "s/$parse_task_pattern/\1/p")
-   status=$(echo "$line" | sed -nr "s/$parse_task_pattern/\2/p")
-     task=$(echo "$line" | sed -nr "s/$parse_task_pattern/\3/p")
-  pattern=$(echo "$indent- [$status] $task" | quotetask)
-
-  if [ "$status" = 'x' ] && [ "$DOBOT_UNCHECK" != 1 ]; then 
-    debug "Skipping the task: '$pattern'"
-    err "The task '$task' is already complete. 
-
-    Try '$0 -u -t '$task' do"
+  if [ -z "$DOBOT_TASK" ]; then err "No task specified!" "\
+$0 -t 'Name of task' do   # do the named task
+$0 -a do                  # do all unchecked tasks"
   fi
 
-  transput=$(readtasks | sed -rn "/^$pattern$/,/- \[/ { //b; p }")
-  readtasks | sed -r "/$pattern/ s/\[.]/\[.]/" | writetasks
+  status=$(taskstatus)
 
-  # Run the task
-  debug "Running the task: '$task'"
-  # Todo, pass arguments
-  transput=$( echo "$transput" | DOBOT_PARENT="$task" "$task")
-  debug "Completed with output: \n'$transput'"
-
-  status="${transput%% *}"
-  output="${transput#? }"
-  if [ ${#status}  != 1 ]; then status="x"; fi
-  if [ ${#output} -gt 1 ]; then
-    output=$(echo "$output" | sed "s/^/$indent  /")
-    transput=$(printf "\n\n%s\n\n" "$output" | awk -v ORS= '{print sep $0; sep="\\n"}')
+  if [ "$DOBOT_ACTION" = "get" ] && [ -z "$status" ]; then
+    err "Could not find the task '$DOBOT_TASK' in '$DOBOT_FILE'";
   fi
+
+  if [ "$DOBOT_UNCHECK" ]; then status=" "; fi
   
-  readtasks |
-    sed -r "/$pattern/,/- \[/ { //b; d }"                        |
-    sed -r "/$pattern/ { s/- \[./- \[$status/; s/$/$transput/ }" |
-    writetasks
+  if [ "$DOBOT_ACTION" = "do" ] && [ "$status" = 'x' ]; then
+    err "## '$DOBOT_TASK' is already complete." "$0 -u -t '$DOBOT_TASK' do"
+  fi
+
+  case $ACTION in
+    get) DOBOT_ACTION="get";  gettask ;;
+    set) DOBOT_ACTION="set";  settask ;;
+    do)  DOBOT_ACTION="do";   dotask  ;;
+  esac
+
+  debug "Done $DOBOT_ACTION-ing '$DOBOT_TASK'"
+}
+
+dotask() {
+  debug "Running the task: '$DOBOT_TASK'"
+  echo "." | settask
+  tasktransput | DOBOT_PARENT="$DOBOT_TASK" "$DOBOT_TASK" | settask
 }
 
 action_null() {
@@ -215,7 +158,6 @@ debug "
 
      Key: | Value    
 --------: | :-----
-    PATH: | $PATH
      cmd: | $0
     args: | $*
      pwd: | $PWD
@@ -227,12 +169,14 @@ debug "
 "
 
 case $ACTION in
-        add) action_add ;;
-        do) action_do   ;;
-        new) action_new  ;;
-      redo) action_redo ;;
+        new) DOBOT_ACTION="new"; action_do  ;;
+        do)  DOBOT_ACTION="do";  action_do   ;;
+       get)  DOBOT_ACTION="get"; action_do ;;
+       set)  DOBOT_ACTION="set"; action_do ;;
+      #  add)  DOBOT_ACTION="add"; action_do ;;
+      # redo)  DOBOT_ACTION="redo"; action_do ;;
       help) action_help ;;
-        del) action_null ;;
+       del) action_null ;;
         rm) action_null ;;
       list) action_null ;;
     archive) action_null ;;

@@ -1,4 +1,18 @@
-#!/bin/sh
+#!/usr/local/bin/php
+<?php
 
-echo "x > Hello, world! I'm testing the todos"
-debug "This is a debug statement"
+dobot('Test a todo with an output', function () {
+  return('x > This is a simple output');
+});
+
+dobot('Test Second Level Todo', function() {
+  dobot('Test Third Level Todo 1');
+  dobot('Test Third Level Todo 2');
+  dobot('Test Third Level Todo 3', fn() => "> Hola!");
+  dobot('Test Third Level Todo 4');
+  return('~');
+});
+
+dobot('Test Another Second Level Todo', function() {
+  return('x > Hello, World');
+});

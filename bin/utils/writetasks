@@ -1,8 +1,12 @@
 #!/bin/sh
 
 tmp="$DOBOT_FILE_IN.$$"
-cat - > "$tmp";
-if [ -f "$tmp" ]; then
-  mv "$tmp" "$DOBOT_FILE_OUT"
-  return
-fi
+
+{
+  cat "$DOBOT_FILE_IN" | sed -r "1,/^\#+ TODO\$/ { p; }; d";
+  cat - | trimnewlines
+  echo "\n"
+  cat "$DOBOT_FILE_IN" | sed -r "/^\#+ Contributors\$/,$ { p; }; d"
+} > "$tmp"
+
+mv "$tmp" "$DOBOT_FILE_OUT"

@@ -1,0 +1,51 @@
+#!/bin/sh
+set -e
+
+task=$(gettask)
+if [ -z "$task" ]; then
+  task=$(addtask)
+fi
+
+# transput=$(echo "$task" | tail +2)
+# status=$(echo "$task" | head -n 1 | sed -nr "s/^ *- \[(.?)] .*$/\1/p")
+indent=$(echo "$task" | head -n 1 | sed -nr "s/^( *)- \[.?] .*$/\1/p")
+
+output=$(cat)
+if [ -n "$output" ]; then
+  status=${output%% *}
+  if [ ${#status} != 1 ]; then status="x"; fi
+
+  transput="${output#?}"
+  if [ ${#transput} -gt 1 ]; then
+    transput="$(echo "${output#?}" | sed "s/^/$indent  /")"
+    transput=$(echo "$transput" | awk -v ORS= '{print sep $0; sep="\\n"}')
+    transput="\n\n$transput"
+  else
+    transput=""
+  fi
+fi
+
+# replace=$(echo "$replace" | sedquote)
+
+find=$(gettask)
+[ -n "$find" ] || err "Cannot find '$DOBOT_TASK'"
+replace="$indent- [$status] $DOBOT_TASK$transput"
+
+readtasks | tr '\n' '\f' |
+  sed -rz "s/$(echo "$find" | sedquote)/$(echo "$replace" | sedquote)/" | 
+  tr '\f' '\n' | writetasks
+echo "$task";
+
+# readtasks | tr '\n' '\f' | sed -rz "s/$(echo "$find" | sedquote)/$(echo "$replace" | sedquote)/" | tr '\f' '\n' | writetasks
+
+debug "## Changes to task
+
+     Key: | Value    
+--------: | :-----
+    task: | '$task'
+  indent: | '$indent'
+  status: | '$status'
+transput: | '$transput'
+    find: | '$find'
+ replace: | '$replace'
+"

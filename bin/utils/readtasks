@@ -1,3 +1,3 @@
 #!/bin/sh
 
-cat "$DOBOT_FILE_IN"
+cat "$DOBOT_FILE_IN" | sed -rn "/^\#+ TODO\$/,/^\#/ { /^\#/d; p; }"

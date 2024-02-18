@@ -1,0 +1,13 @@
+#!/bin/sh
+
+  pattern=$(echo "$DOBOT_TASK" | quotetask)
+  task=$(readtasks | sed -rn "/$pattern$/,$ { /$pattern$/p; /- \[/!p; }")
+  echo "$task";
+
+  debug "## Task read from file
+
+     Key: | Value
+--------: | :-----
+ pattern: | $pattern
+  task:   | $task
+"

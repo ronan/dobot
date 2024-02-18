@@ -1,0 +1,3 @@
+#!/bin/sh
+
+gettask | tail +2

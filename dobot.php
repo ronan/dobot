@@ -1,7 +1,7 @@
 #!/usr/local/bin/php
 <?php
 
-function dobot($key = null, $callback = null, $initial_state = ' ', $create_if_missing = true)
+function dobot_php($key = null, $callback = null, $initial_state = ' ', $create_if_missing = true)
 {
     static $stack = []; // The strategic static task stack.
 
@@ -324,25 +324,7 @@ if (realpath($argv[0]) == realpath(__FILE__)) {
 }
 
 # Built-in tasks
+/*
 dobot("Configure project", function () {
-    $current_type = dobot_config("Project Type");
-    dobot("Specify a project type", function () use ($current_type) {
-        $items = '';
-        foreach (['Custom', 'Pantheon', 'Platform.sh'] as $type) {
-            $type = $type == $current_type ? "**$type**" : $type;
-            $items .= "- $type\n";
-        }
-        if ($current_type && $current_type != "Select One") {
-            return "x**Project Type:**\n\n$items";
-        }
-        return "!> Please pick a **Project Type:**\n\n$items";
-    });
-    if ($current_type) {
-        dobot("Configure a $current_type project");
-    }
-    dobot("Configure a Custom project", function () {
-        $git_repo = dobot_config("Git Repo");
-        $out = $git_repo ? "x" : "!> Please fill out the following details:";
-        return $out . dobot_config_table(["Git Repo" => $git_repo]);
-    }, ' ', false);
 });
+*/
