@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-[ -n "$DOBOT_TASK" ] || err "No task to add";
+[ -n "$TEXTMARK_TASK" ] || err "No task to add";
 
 stdin=$(cat)
 if [ -n "$stdin" ]; then
@@ -12,23 +12,23 @@ fi
 task=$(gettask)
 debug "t: $task"
 if [ -n "$task" ]; then
-  debug "Modifying '$DOBOT_TASK'"
+  debug "Modifying '$TEXTMARK_TASK'"
 
      find=$task
    indent=$(taskindent "$task")
    status=${status:-$(taskstatus "$task")}
  transput=${transput:-$(tasktransput "$task")}
-  replace="$indent- [${status:- }] $DOBOT_TASK"
+  replace="$indent- [${status:- }] $TEXTMARK_TASK"
 else
-  debug "Adding '$DOBOT_TASK'"
+  debug "Adding '$TEXTMARK_TASK'"
 
   # TODO: find a way to put new items with no parent at the end
   find="$"
-  if [ -n "$DOBOT_PARENT" ]; then
+  if [ -n "$TEXTMARK_PARENT" ]; then
       find=$(getparent)
     indent=$(taskindent "$find")
     status=${status:- }
-   replace="$find\n$indent  - [$status] $DOBOT_TASK"
+   replace="$find\n$indent  - [$status] $TEXTMARK_TASK"
   fi
 fi
 

@@ -1,4 +1,13 @@
 #!/bin/sh
 
-say "$@"
+say "> [!CAUTION]"
+say "> $1"
+if [ -n "$2" ]; then
+  usage=$(echo "$2" | sed 's/^/> /') 
+  say "
+Try:
+
+$usage
+"
+fi
 exit 1;

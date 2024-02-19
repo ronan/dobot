@@ -1,20 +1,7 @@
-# Untitled DoBot Project
+# Textmark
 
 ## About
 
-**Version:** `0.0.1`
+A simple, text-based autonomation tool.
 
-## TODO
-
-- [ ] Test Todos
-
-## Changelog
-
-## [0.0.1] - 2023-12-13
-
-- **Added:** README.md file created automatically at ./README.md for **Ronan Dowling**
-
-## Contributors
-
-- **🤖 DoBot:** <https://github.com/ronan/dobot>
-- **Ronan Dowling:** <ronan@dowlings.me>
+To get started run: `tasklist new`

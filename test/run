@@ -1,4 +1,5 @@
 #!/bin/sh
 
-cp /workspace/test/IN.md /workspace/test/DOBOT.md;
-dobot -v -t "Test Todos" "do"
+# cp /workspace/test/IN.md /workspace/test/tasklist.md;
+textmark -v renew
+textmark -v -t "Test Todos" "do"

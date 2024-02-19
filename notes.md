@@ -107,16 +107,16 @@
 - [x] Transput is piped in via STDIN and out via STDOUT
 - [ ] Environment variables are used to pass values from parent to child
   - [ ] Eg: Current Parent, Task Stack, Task File.
-    - This allows tasks to call 'dobot' wthout having to re-pass the original args
+    - This allows tasks to call 'textmark' wthout having to re-pass the original args
 - [ ] Multiple todos can be combined into one file
-  - [ ] Allow tasks to call 'dobot add'
+  - [ ] Allow tasks to call 'textmark add'
   - Scripting Languages (php, python, js)
     - Script gets called in an environment where a lanuage specific 'todo' function is available
     - That env is probably a docker
   - [ ] Language specific helpers like PHP callback
     - [x] sh
-      - Just use `$(dobot do)`
-    - [~] PHP
+      - Just use `$(textmark do)`
+    - [x] PHP
     - [ ] JS
     - [ ] Python
     - Wherever possible the language-helpers are not magic
@@ -133,11 +133,11 @@
           "input"
         }
 
-        dobot('Test Second Level Todo', function() {
-          dobot('Test Third Level Todo 1');
-          dobot('Test Third Level Todo 2');
-          dobot('Test Third Level Todo 3');
-          dobot('Test Third Level Todo 4');
+        textmark('Test Second Level Todo', function() {
+          textmark('Test Third Level Todo 1');
+          textmark('Test Third Level Todo 2');
+          textmark('Test Third Level Todo 3');
+          textmark('Test Third Level Todo 4');
         });
 
         // Do we support both "output" and subtasks?

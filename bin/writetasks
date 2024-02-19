@@ -1,13 +1,13 @@
 #!/bin/sh
 
-tmp="$DOBOT_FILE_IN.$$"
+tmp="$TEXTMARK_FILE.$$"
 
 {
-  cat "$DOBOT_FILE_IN" | sed -r "1,/^\#+ TODO\$/ { p; }; d";
+  cat "$TEXTMARK_FILE" | sed -r "1,/^\#+ Tasks\$/ { p; }; d";
   echo ""
   cat - | trimnewlines
   echo ""
-  cat "$DOBOT_FILE_IN" | sed -r "/^\#+ Contributors\$/,$ { p; }; d"
+  cat "$TEXTMARK_FILE" | sed -r "/^\#+ Contributors\$/,$ { p; }; d"
 } > "$tmp"
 
-mv "$tmp" "$DOBOT_FILE_OUT"
+mv "$tmp" "$TEXTMARK_FILE"

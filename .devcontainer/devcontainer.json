@@ -1,5 +1,5 @@
 {
-	"name": "Dobot Dev",
+	"name": "Textmark Local Dev",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "devcontainer",
 	"workspaceFolder": "/workspace",

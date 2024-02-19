@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo ""
-cat "$DOBOT_FILE_IN" | 
-  sed -rn "/^\#+ TODO\$/,/^\#/ { /^\#/d; p; }" | 
+cat "$TEXTMARK_FILE" | 
+  sed -rn "/^\#+ Tasks\$/,/^\#/ { /^\#/d; p; }" | 
   awk NF
 echo ""

@@ -1,8 +1,8 @@
 {
-  "name": "dobot",
+  "name": "textmark",
   "publisher": "ronan",
-  "displayName": "Dobot",
-  "description": "A VS Code extension to process and run dobot README.md files.",
+  "displayName": "Textmark",
+  "description": "A VS Code extension to process and run textmark tasklist.md files.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.85.0"
@@ -15,8 +15,8 @@
   "contributes": {
     "commands": [
       {
-        "command": "dobot.do",
-        "title": "Dobot Do"
+        "command": "textmark.do",
+        "title": "textmark Do"
       }
     ]
   },
