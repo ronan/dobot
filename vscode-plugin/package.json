@@ -1,0 +1,26 @@
+{
+  "name": "dobot",
+  "publisher": "ronan",
+  "displayName": "Dobot",
+  "description": "A VS Code extension to process and run dobot README.md files.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dobot.do",
+        "title": "Dobot Do"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0"
+  }
+}

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+tmp="$DOBOT_FILE_IN.$$"
+
+{
+  cat "$DOBOT_FILE_IN" | sed -r "1,/^\#+ TODO\$/ { p; }; d";
+  echo ""
+  cat - | trimnewlines
+  echo ""
+  cat "$DOBOT_FILE_IN" | sed -r "/^\#+ Contributors\$/,$ { p; }; d"
+} > "$tmp"
+
+mv "$tmp" "$DOBOT_FILE_OUT"
