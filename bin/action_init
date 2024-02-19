@@ -1,0 +1,24 @@
+#!/bin/sh
+
+if [ -f "$TEXTMARK_FILE" ]; then
+    echo "The file '$TEXTMARK_FILE' already exists. Try '``textmark`` renew' to start over."
+    exit 1
+  fi
+  echo "\
+# Untitled Project
+
+## Tasks
+
+- [x] Create TODO list
+- [ ] Test Todos
+
+## Changelog
+
+$(logchanges "**Added** this tasklist.md file with Textmark")
+
+## Contributors
+
+- "🤖 Textmark:" <https://textmark.online>
+- $(contributor)
+" > "$TEXTMARK_FILE"
+

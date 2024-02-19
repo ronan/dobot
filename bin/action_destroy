@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -f "$TEXTMARK_FILE" ]; then
+  debug "Deleting '$TEXTMARK_FILE'"
+  rm "$TEXTMARK_FILE"
+fi
+if [ -f "$TEXTMARK_LOG" ]; then
+  debug "Deleting '$TEXTMARK_LOG'"
+  rm "$TEXTMARK_LOG"
+fi
+

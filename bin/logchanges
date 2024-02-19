@@ -1,0 +1,12 @@
+#!/bin/sh
+
+echo "
+
+---
+By $(userlink)
+on _$(timestamp)_
+
+$(echo "$@" | prefixlines "- ")
+
+---
+"

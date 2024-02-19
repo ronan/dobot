@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+
+[ -n "$TEXTMARK_TASK" ] || err "No task to remove";
+task=$(gettask)
+[ -n "$task" ] || err "'$TEXTMARK_TASK' was not found in TEXTMARK_FILE";

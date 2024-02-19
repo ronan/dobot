@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+
+echo "$(git config user.name)[^$(userid)]"

@@ -1,0 +1,106 @@
+#!/bin/sh
+set -e
+
+# Textmark Shell Script
+scriptdir="/workspace"
+PATH="$scriptdir/tasks:$scriptdir/bin:$PWD/tasks:$PATH"
+
+export TEXTMARK_FILE TEXTMARK_TASK TEXTMARK_PARENT TEXTMARK_VERBOSE TEXTMARK_PARENT TEXTMARK_STACK TEXTMARK_RUN
+
+    TEXTMARK_LOG=${TEXTMARK_LOG:-'./textmark.log'}
+   TEXTMARK_FILE=${TEXTMARK_FILE:-'./tasklist.md'}
+   TEXTMARK_TASK=${TEXTMARK_TASK:-''}
+TEXTMARK_UNCHECK=${TEXTMARK_UNCHECK:-0}
+TEXTMARK_VERBOSE=${TEXTMARK_VERBOSE:-0}
+
+while getopts 'f::t::p::r::uva' c
+do
+  case $c in
+    f)    TEXTMARK_FILE=$OPTARG ;;
+    t)    TEXTMARK_TASK=$OPTARG ;;
+    p)  TEXTMARK_PARENT=$OPTARG ;;
+    r)     TEXTMARK_RUN=$OPTARG ;;
+    u) TEXTMARK_UNCHECK=1       ;;
+    v) TEXTMARK_VERBOSE=1       ;;
+    # a)     TEXTMARK_ALL=1       ;;
+    *) action_help
+       exit 1 ;;
+  esac
+done
+
+shift $((OPTIND-1))
+TEXTMARK_ACTION=${1:-"help"}
+
+## Actions
+action_task() {
+
+  if [ -z "$TEXTMARK_TASK" ]; then err "No task specified!" "\
+$0 -t 'Name of task' do   # do the named task
+$0 -a do                  # do all unchecked tasks"
+  fi
+
+  status=$(taskstatus "$(gettask)")
+  debug "status::$status"
+
+  if [ "$TEXTMARK_ACTION" = "get" ] && [ -z "$status" ]; then
+    err "Could not find the task '$TEXTMARK_TASK' in '$TEXTMARK_FILE'";
+  fi
+
+  if [ "$TEXTMARK_UNCHECK" ]; then status=" "; fi
+  
+  if [ "$TEXTMARK_ACTION" = "do" ] && [ "$status" = 'x' ]; then
+    err "## '$TEXTMARK_TASK' is already complete." "$0 -u -t '$TEXTMARK_TASK' do"
+  fi
+
+  case $TEXTMARK_ACTION in
+    get) TEXTMARK_ACTION="get";  gettask ;;
+    set) TEXTMARK_ACTION="set";  settask ;;
+    do)  TEXTMARK_ACTION="do";   dotask  ;;
+  esac
+
+  debug "Done $TEXTMARK_ACTION-ing '$TEXTMARK_TASK'"
+}
+
+dotask() {
+  echo "." | settask
+
+  debug "Running the task: '$TEXTMARK_TASK'"
+  output=$(tasktransput "$(gettask)" | TEXTMARK_PARENT="$TEXTMARK_TASK" "$TEXTMARK_TASK")
+  [ -n "$output" ] || output="x"
+  echo "$output" | settask
+  debug "Task complete with output: $output"
+}
+
+action_null() {
+  say "This action is not yet implemented"
+}
+
+debug "
+## Initial Values:
+
+     Key: | Value    
+--------: | :-----
+     cmd: | $0
+    args: | $*
+     pwd: | $PWD
+    file: | $TEXTMARK_FILE
+    task: | $TEXTMARK_TASK
+  parent: | $TEXTMARK_PARENT
+ verbose: | $TEXTMARK_VERBOSE
+  action: | $TEXTMARK_ACTION
+"
+
+case $TEXTMARK_ACTION in
+        do) action_task  ;;
+       get) action_task  ;;
+       set) action_task  ;;
+       new) action_init  ;;
+      init) action_init  ;;
+     renew) action_destroy \
+         && action_init  ;;
+   destroy) action_destroy ;;
+      help) action_help ;;
+        rm) action_null ;;
+      list) action_null ;;
+   archive) action_null ;;
+esac

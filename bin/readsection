@@ -1,0 +1,7 @@
+#!/bin/sh
+
+echo ""
+readtaskfile | 
+  sed -rn "/^\#+ $*\$/,/^\#/ { /^\#/d; p; }" | 
+  awk NF
+echo ""

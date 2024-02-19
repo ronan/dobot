@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+
+git config user.email | md5sum | awk '{ print $1 }' | cut -c1-8

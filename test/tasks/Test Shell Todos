@@ -1,0 +1,12 @@
+#!/bin/bash
+
+textmark -p "$TEXTMARK_PARENT" -t "This is a task" add
+textmark -p "This is a task" -t "This is a subtask" add
+
+echo "x > Hello, world! I'm testing the todos"
+debug "This is a debug statement"
+
+textmark -t "Generate backstop reference images" -e <<<EOF
+  #!/bin/sh
+  docker exec -it backstop backstop reference
+EOF;

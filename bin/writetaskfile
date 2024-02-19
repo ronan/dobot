@@ -1,0 +1,7 @@
+#!/bin/sh
+
+tmp="$TASKBOT_FILE.$$"
+
+cat - > "$tmp"
+
+mv "$tmp" "$TASKBOT_FILE"

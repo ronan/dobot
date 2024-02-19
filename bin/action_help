@@ -1,0 +1,43 @@
+#!/bin/sh
+
+echo "\
+# Textmark 
+
+A simple, text-based autonomation tool.
+
+Usage: $0 [ -f README.md ] [ -t TEXTMARK_TASK ] [ -p TEXTMARK_PARENT ] action
+
+## Actions:
+
+do
+: Run a task and it's sub-tasks.
+
+new
+: Create a new task list.
+
+renew
+: Recreate a task list. The existing file will be deleted.
+
+help
+: Show this help.
+
+### Coming soon
+- del / rm
+- list
+- archive
+
+## Options
+-f *filename*
+: The file to read and write to. 
+: If a file path is not specified then textmark uses './README.md'
+
+-v
+: Verbose output
+
+-t *pattern*
+: Run all tasks that match the given *pattern*
+
+-p *pattern*
+: Restrict action to subtasks of tasks matching the given *pattern*
+
+"; 
